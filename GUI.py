@@ -211,6 +211,122 @@ class App(tk.Tk):
         #boton_ajustes.config(command=self.Datos)
         boton_ajustes.pack(side="bottom",pady=8)
         
+    def Entry(self):
+        """
+        Ventana para ingreso y registro de cada animal
+        -Formulario
+        -Listado de registros agregados
+        """
+        entryw = tk.Toplevel()
+        entryw.title("Ingreso")
+        entryw.geometry("800x500")
+        entryw.resizable(0, 0)
+        registro = tk.LabelFrame(entryw, text="Registro", background="#46665F", foreground="white")
+        registro.grid(row=0, column=1, padx=5, pady=5, sticky="NSEW")
+        listado = ttk.Frame(entryw)
+        listado.grid(row=1, column=1)
+
+        # Variables
+        marca = tk.StringVar()
+        otra_marca =tk.StringVar(value="")
+        sexo = tk.StringVar()
+        dia = tk.StringVar()
+        mes = tk.StringVar()
+        anio = tk.StringVar()
+        nacimiento = tk.StringVar(value=f"{dia.get()}/{mes.get()}/{anio.get()}")
+        peso = tk.StringVar()
+        raza = tk.StringVar()
+        otra_raza =tk.StringVar(value="")
+        corral = tk.StringVar()
+        salud = tk.StringVar()
+        reg = [marca, peso, nacimiento, raza, sexo, corral, salud]
+
+        # Etiquetas
+        labels1 = ["Marca", "Nacimiento", "Raza", "Salud"]
+        labels2 = ["Sexo", "Peso", "Corral"]
+
+        for index, label in enumerate(labels1):
+            ttk.Label(registro, text=f"{label} : ", anchor="e", justify="right").grid(row=index + 1, column=1)
+
+        # Crea un filtro a partir de ciertos parámetros
+        def crear_option_menu(frame, row, col, variable, opciones):
+            menu = ttk.OptionMenu(frame, variable, opciones[0], *opciones)
+            menu.grid(row=row, column=col, padx=2, sticky="w")
+            return menu
+
+        def crea_entry(frame, row, col, variable):
+            menu = ttk.Entry(frame,textvariable= variable)
+            menu.grid(row=row, column=col, padx=2, sticky="w")
+            return menu
+        
+        # Función que deshabilita el OptionMenu y habilita el Entry si la opción es "Otro"
+        def verificar_opcion(variable, entry, variable_2):
+            if variable.get() == "Otro":
+                entry.config(state="normal")  # Habilita el Entry
+                variable_2.set(value="")
+            else:
+                entry.config(state="disabled")
+                variable_2.set(value="")
+                
+        # Opciones de marca y raza
+        opc_marca = ["NA"]
+        opc_marca.extend(sorted(list(manejo_datos(ganado).marcas)))
+        opc_marca.append("Otro")
+        
+        opc_raza = ["NA"]
+        opc_raza.extend(sorted(list(manejo_datos(ganado).razas)))
+        opc_raza.append("Otro")
+
+        def fill_dia(var):
+            if var.get() == "":
+                var.set("DD")
+        def fill_mes(var):
+            if var.get() == "":
+                var.set("MM")
+        def fill_anio(var):
+            if var.get() == "":
+                var.set("AAAA")
+        
+        # Menús y entrys para las variables 
+        
+        # Marca
+        crear_option_menu(registro, 1, 2, marca, opc_marca)
+        marca_otro_entry =crea_entry(registro,1,3,otra_marca)
+        marca_otro_entry.config(state="disabled")
+        
+        # Nacimiento
+        # Enlazamos la funcion de llenado default para cada variable 
+        dia.trace_add("write",lambda *args : fill_dia(dia))
+        mes.trace_add("write",lambda *args : fill_mes(mes))
+        anio.trace_add("write",lambda *args : fill_anio(anio))
+        
+        nacimientoEntry = ttk.Frame(registro)
+        nacimientoEntry.grid(row=2,column=2,columnspan=2,sticky="w")
+        diaEntry =crea_entry(nacimientoEntry,0,0,dia)
+        diaEntry.config(width=8)
+        ttk.Label(nacimientoEntry,text="/").grid(row=0,column=1)
+        mesEntry =crea_entry(nacimientoEntry,0,2,mes)
+        mesEntry.config(width=8)
+        ttk.Label(nacimientoEntry,text="/").grid(row=0,column=3)
+        anioEntry =crea_entry(nacimientoEntry,0,4,anio)
+        anioEntry.config(width=8)
+        
+        # Raza
+        crear_option_menu(registro, 3, 2, raza, opc_raza)
+        raza_otro_entry =crea_entry(registro,3,3,otra_raza)
+        raza_otro_entry.config(state="disabled")
+
+        # Enlazamos los cambios de selección a la función verificar_opcion
+        marca.trace_add("write", lambda *args: verificar_opcion(marca, marca_otro_entry,otra_marca))
+        raza.trace_add("write", lambda *args: verificar_opcion(raza, raza_otro_entry,otra_raza))
+        
+        # 
+        dia.trace_add("write",lambda *args : fill_dia(dia))
+        mes.trace_add("write",lambda *args : fill_mes(mes))
+        anio.trace_add("write",lambda *args : fill_anio(anio))
+            
+            
+            
     def Datos(self,*args):
         if self.actualW =="Datos":
             return
@@ -238,42 +354,7 @@ class App(tk.Tk):
                         self.corral
                         ]
             self.filtros = [var.get() for var in self.vars]
-        default_vars()
-
-        def Entry():
-            """
-            Ventana para ingreso y registro de cada animal
-            -Formulario
-            -Listado de registros agregados
-            """
-            entryw = tk.Tk()
-            self.styles()
-            entryw.title("Ingreso")
-            entryw.geometry("800x500")
-            entryw.resizable(0,0)
-            registro = ttk.Labelframe(entryw,text="Registro")
-            registro.grid(row=0,column=1,padx=5,pady=5)
-            listado = ttk.Frame(entryw)
-            listado.grid(row=1,column=1)
-            # REGISTRO - variables
-            marca = tk.StringVar()
-            sexo = tk.StringVar()
-            nacimiento = tk.StringVar()
-            peso = tk.StringVar()
-            raza = tk.StringVar()
-            corral = tk.StringVar()
-            salud = tk.StringVar()
-            reg =[marca,peso,
-                  nacimiento,raza,
-                  sexo,corral,salud]
-            
-            # REGISTRO - formulario
-            labels1 = ["Marca","Nacimiento","Raza","Salud"]
-            labels2 = ["Sexo","Peso","Corral"]
-            for index,label in enumerate(labels1):
-                ttk.Label(registro,text=f"{label} : ",anchor="e",justify="right").grid(row=index+1,column=1)
-            
-            
+        default_vars()  
         
         # LISTADO-datos
         def dataframes(frame, tam, datos):
@@ -350,7 +431,7 @@ class App(tk.Tk):
         btn_frame = ttk.Frame(self.frame_principal)
         btn_frame.pack(side="right",fill="y",padx=20)
         # Botones de Agregar,Actualizar y Eliminar
-        add_btn = ttk.Button(btn_frame,text="Agregar",style="listado.TButton",width=20,command=Entry)
+        add_btn = ttk.Button(btn_frame,text="Agregar",style="listado.TButton",width=20,command=self.Entry)
         upd_btn = ttk.Button(btn_frame,text="Actualizar",state="disabled",style="listado.TButton",width=20)
         del_btn = ttk.Button(btn_frame,text="Eliminar",state="disabled",style="listado.TButton",width=20)
         add_btn.pack(side="right",anchor="n",padx=2,pady=2)
@@ -372,10 +453,8 @@ class App(tk.Tk):
             for item in filtrado.get_children():
                 filtrado.delete(item)
             self.filtros = [var.get() for var in self.vars]
-            print(self.filtros)
             # Datos a filtrar
             datos_filtrados = self.datos.filtros(self.filtros)
-            print(datos_filtrados)
             if datos_filtrados != []:
                 columns = list(datos_filtrados[0].keys())
             else:
