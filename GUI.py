@@ -356,6 +356,7 @@ class App(tk.Tk):
             self.filtros = [var.get() for var in self.vars]
         default_vars()  
         
+    
         # LISTADO-datos
         def dataframes(frame, tam, datos):
 
