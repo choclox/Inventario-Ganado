@@ -21,6 +21,7 @@ class App(tk.Tk):
         super().__init__()
         self.state("zoomed")
         self.title("Ganado")
+        self.config(background="#46665F",)
         self.styles()
         # Se establece los datos que se van a trabajar
         self.datos= manejo_datos(ganado)
@@ -60,7 +61,7 @@ class App(tk.Tk):
         
         # Casos Especiales
         style.configure("menu.TFrame",background=color_primary)
-
+        
         # General Frame
         style.configure("TFrame", background=color_background)
         
@@ -137,12 +138,12 @@ class App(tk.Tk):
 
         # Entry (campo de texto)
         style.configure("TEntry",
-                        fieldbackground=color_background,
+                        fieldbackground=color_dark,
                         foreground="white",
                         borderwidth=1,
                         relief="flat",
                         font=font_default)
-        style.map("TEntry",fieldbackground=[("disabled",color_darker)])
+        style.map("TEntry",fieldbackground=[("disabled","#222B2A")])
         
         # LabelFrame
         style.configure("TLabelFrame",
@@ -236,7 +237,7 @@ class App(tk.Tk):
         boton_ajustes.pack(side="bottom",pady=8)
         
     # Funcion que crea dataframes
-    def dataframes(self,root, tam, datos):
+    def dataframes(self,root, tam, datos,btn):
             # Obtiene las llaves de los diccionarios de datos
             columns = list(datos[0].keys())
             
@@ -284,8 +285,8 @@ class App(tk.Tk):
                     self.del_btn.config(state="normal")
                 except NameError:
                     print("Botones 'upd_btn' o 'del_btn' no definidos.")
-
-            listado.bind("<<TreeviewSelect>>", habilitar_botones)
+            if btn:
+                listado.bind("<<TreeviewSelect>>", habilitar_botones)
 
             # Scrollbar vertical
             verscrlbar = ttk.Scrollbar(frame, orient="vertical", command=listado.yview)
@@ -302,14 +303,51 @@ class App(tk.Tk):
         -Formulario
         -Listado de registros agregados
         """
+        
+        def crea_entry(frame, row, col, variable, default):
+            # Asignamos el valor por defecto a la variable antes de crear el Entry
+            menu = ttk.Entry(frame)
+            menu.grid(row=row, column=col, padx=2, pady=2, sticky="w")
+            
+            # Insertamos el valor por defecto en el Entry
+            menu.insert(0,default)
+            
+            return menu
+
+        # Crea un filtro a partir de ciertos parámetros
+        def crear_option_menu(frame, row, col, variable, opciones):
+            menu = ttk.OptionMenu(frame, variable, opciones[0], *opciones)
+            menu.grid(row=row, column=col, padx=2, sticky="w")
+            return menu
+        
+        # Función que deshabilita el OptionMenu y habilita el Entry si la opción es "Otro"
+        def verificar_opcion(variable, entry, variable_2):
+            if variable.get() == "Otro":
+                entry.config(state="normal")  # Habilita el Entry
+            else:
+                entry.delete(0,tk.END)
+                entry.config(state="disabled")
+                
+        def seleccionar_texto(entry):
+            entry.select_range(0, tk.END)  # Selecciona todo el texto en el Entry
+            entry.focus_set()  # Asegura que el Entry tiene el foco
+            
+        # Enlazamos la funcion de llenado default para cada variable 
+        def on_focus_in(entry, default):
+            if entry.get() == default:
+                entry.delete(0, tk.END)  # Limpiar el texto
+
+        def on_focus_out(entry, default):
+            if entry.get() == "":  # Si está vacío, restaurar el valor predeterminado
+                entry.insert(0, default)
+                
         entryw = tk.Toplevel()
         entryw.title("Ingreso")
-        entryw.geometry("800x500")
-        entryw.resizable(0, 0)
+        entryw.config(background="#46665F")
         registro = tk.LabelFrame(entryw, text="Registro", background="#46665F", foreground="white")
         registro.grid(row=0, column=1, padx=5, pady=5, sticky="NSEW")
-        listado = ttk.Frame(entryw)
-        listado.grid(row=1, column=1)
+        ingresos = tk.LabelFrame(entryw, text="Observaciones", background="#46665F", foreground="white")
+        ingresos.grid(row=1, column=1, padx=5, pady=5, sticky="NSEW")
 
         # Variables
         marca = tk.StringVar()
@@ -322,36 +360,22 @@ class App(tk.Tk):
         peso = tk.StringVar()
         raza = tk.StringVar()
         otra_raza =tk.StringVar(value="")
-        corral = tk.StringVar()
+        finca = tk.StringVar()
+        otra_finca = tk.StringVar()
         salud = tk.StringVar()
-        reg = [marca, peso, nacimiento, raza, sexo, corral, salud]
-
+        observaciones = tk.StringVar()
+        #reg = [marca, peso, nacimiento, raza, sexo, corral, salud]
+        
         # Etiquetas
         labels1 = ["Marca", "Nacimiento", "Raza", "Salud"]
-        labels2 = ["Sexo", "Peso", "Corral"]
+        labels2 = ["Sexo", "Peso", "Finca"]
 
         for index, label in enumerate(labels1):
-            ttk.Label(registro, text=f"{label} : ", anchor="e", justify="right").grid(row=index + 1, column=1)
-
-        # Crea un filtro a partir de ciertos parámetros
-        def crear_option_menu(frame, row, col, variable, opciones):
-            menu = ttk.OptionMenu(frame, variable, opciones[0], *opciones)
-            menu.grid(row=row, column=col, padx=2, sticky="w")
-            return menu
-
-        def crea_entry(frame, row, col, variable):
-            menu = ttk.Entry(frame,textvariable= variable)
-            menu.grid(row=row, column=col, padx=2, sticky="w")
-            return menu
+            ttk.Label(registro, text=f"* {label} : ", anchor="e", justify="right").grid(row=index + 1, column=1,sticky="e")
         
-        # Función que deshabilita el OptionMenu y habilita el Entry si la opción es "Otro"
-        def verificar_opcion(variable, entry, variable_2):
-            if variable.get() == "Otro":
-                entry.config(state="normal")  # Habilita el Entry
-                variable_2.set(value="")
-            else:
-                entry.config(state="disabled")
-                variable_2.set(value="")
+        for index, label in enumerate(labels2):
+            ttk.Label(registro, text=f"* {label} : ", anchor="e", justify="right").grid(row=index + 1, column=5,sticky="e")
+
                 
         # Opciones de marca y raza
         opc_marca = ["NA"]
@@ -362,56 +386,102 @@ class App(tk.Tk):
         opc_raza.extend(sorted(list(manejo_datos(ganado).razas)))
         opc_raza.append("Otro")
 
-        def fill_date(dia,mes,anio):
-            if dia.get() == "":
-                dia.set("DD")
-            if mes.get() == "":
-                mes.set("MM")
-            if anio.get() == "":
-                anio.set("AAAA")
-        fill_date(dia,mes,anio)
+        opc_salud = ["Saludable","Herido","Enfermo"]
         
-        # Menús y entrys para las variables 
+        opc_finca=sorted(list(self.datos.corrales))
+        opc_finca.append("Otro")
         
         # Marca
         crear_option_menu(registro, 1, 2, marca, opc_marca)
-        marca_otro_entry =crea_entry(registro,1,3,otra_marca)
+        marca_otro_entry =crea_entry(registro,1,3,otra_marca,"")
         marca_otro_entry.config(state="disabled")
         
         # Nacimiento
-        # Enlazamos la funcion de llenado default para cada variable 
-        dia.trace_add("write",lambda *args : fill_date(dia,mes,anio))
-        mes.trace_add("write",lambda *args : fill_date(dia,mes,anio))
-        anio.trace_add("write",lambda *args : fill_date(dia,mes,anio))
-        
         nacimientoEntry = ttk.Frame(registro)
         nacimientoEntry.grid(row=2,column=2,columnspan=2,sticky="w")
-        diaEntry =crea_entry(nacimientoEntry,0,0,dia)
-        diaEntry.config(width=8)
+        
+        dia_entry =crea_entry(nacimientoEntry,0,0,dia,"DD")
+        dia_entry.config(width=8)
+        
         ttk.Label(nacimientoEntry,text="/").grid(row=0,column=1)
-        mesEntry =crea_entry(nacimientoEntry,0,2,mes)
-        mesEntry.config(width=8)
+        mes_entry =crea_entry(nacimientoEntry,0,2,mes,"MM")
+        mes_entry.config(width=8)
+        
         ttk.Label(nacimientoEntry,text="/").grid(row=0,column=3)
-        anioEntry =crea_entry(nacimientoEntry,0,4,anio)
-        anioEntry.config(width=8)
+        anio_entry =crea_entry(nacimientoEntry,0,4,anio,"AAAA")
+        anio_entry.config(width=8)
+        
+        # Capturar datos en variable
+        dia.set(dia_entry.get())
+        mes.set(mes_entry.get())
+        anio.set(anio_entry.get())
+        
+        # Enlazar eventos de focus in/out
+        dia_entry.bind("<FocusIn>", lambda event: on_focus_in(dia_entry, "DD"))
+        dia_entry.bind("<FocusOut>", lambda event: on_focus_out(dia_entry, "DD"))
+
+        mes_entry.bind("<FocusIn>", lambda event: on_focus_in(mes_entry, "MM"))
+        mes_entry.bind("<FocusOut>", lambda event: on_focus_out(mes_entry, "MM"))
+
+        anio_entry.bind("<FocusIn>", lambda event: on_focus_in(anio_entry, "AAAA"))
+        anio_entry.bind("<FocusOut>", lambda event: on_focus_out(anio_entry, "AAAA"))
         
         # Raza
         crear_option_menu(registro, 3, 2, raza, opc_raza)
-        raza_otro_entry =crea_entry(registro,3,3,otra_raza)
+        raza_otro_entry =crea_entry(registro,3,3,otra_raza,"")
         raza_otro_entry.config(state="disabled")
-
+        
+        # Salud
+        crear_option_menu(registro,4,2,salud,opc_salud)
+    
+        # Separador
+        ttk.Separator(registro,orient="vertical").grid(row=1,column=4,rowspan=3,padx=30,sticky="NES")
+        
+        # sexo
+        opc_sexo=["Macho","Hembra"]
+        crear_option_menu(registro,1,6,sexo,opc_sexo)
+        
+        # Peso
+        peso_default = str(self.datos.peso_promedio)
+        peso_entry = crea_entry(registro,2,6,peso,peso_default)
+        peso_entry.config(width=8,justify="center")
+        peso_entry.bind("<FocusIn>", lambda event: seleccionar_texto(peso_entry))
+        
+        # Finca
+        crear_option_menu(registro,3,6,finca,opc_finca)
+        finca_otro_entry = crea_entry(registro,3,7,otra_finca,"")
+        finca_otro_entry.config(state="disabled")
+        
+        # Observaciones
+        color_dark = "#323B39"
+        font_default = ("Helvetica", 10)
+        obs_frame = tk.LabelFrame(registro, text="Observaciones", background="#46665F", foreground="white")
+        obs_frame.grid(row=4,column=3,columnspan=5,rowspan=2, sticky="NSEW")
+        obs_entry= tk.Text(obs_frame,background=color_dark,font=font_default,foreground="white",height=3)
+        obs_entry.pack(fill="both")
+        
         # Enlazamos los cambios de selección a la función verificar_opcion
         marca.trace_add("write", lambda *args: verificar_opcion(marca, marca_otro_entry,otra_marca))
         raza.trace_add("write", lambda *args: verificar_opcion(raza, raza_otro_entry,otra_raza))
+        finca.trace_add("write", lambda *args: verificar_opcion(finca, finca_otro_entry,otra_finca))
         
-         
+        # Botones de ingresar y exportar
+        ttk.Button(registro,text="Ingresar").grid(row=3,column=9,padx= (50,0))
+        ttk.Button(registro,text="Exportar").grid(row=5,column=9,padx= (50,0))
+        
+        # TABLA DE DATOS INGRESADOS
+        lista_filtros= ["" ,"-Seleccionar-", "7", "-Seleccionar-", "-Seleccionar-","-Seleccionar-", "-Seleccionar-", "-Seleccionar-","-Seleccionar-"]
+        ingresados = self.datos.filtros(lista_filtros)
+        tabla = self.dataframes(ingresos,10,ingresados,False)
+        tabla.pack(fill="both")
+        
     def tab_general(self,notebook):
         tabGeneral = ttk.Frame(notebook)
         # Frame listado 
         listado_frame = ttk.Frame(tabGeneral)
         listado_frame.pack(side="top",fill="x")
         # Se muestra el listado 
-        listado = self.dataframes(tabGeneral,35,self.datos.values_filtrados)
+        listado = self.dataframes(tabGeneral,35,self.datos.values_filtrados,True)
         listado.pack(fill="both",padx=8,pady=8)
         
         # BOTONES CRUD
