@@ -2,10 +2,18 @@ import tkinter as tk
 from tkinter import ttk
 from ejemplos import ganado
 import functools
-import operator
 from datos import manejo_datos
 import tksheet
-
+"""
+Ultimos cambios:
+- Reorganizacion de panel de datos en forma
+  de notebook.
+Continuar con:
+- Ingreso de animales
+- Tab Machos
+- Tab Hembras
+- Boton Exportar
+"""
 
 
 class App(tk.Tk):
@@ -56,6 +64,22 @@ class App(tk.Tk):
         # General Frame
         style.configure("TFrame", background=color_background)
         
+        # Configura el estilo para el Notebook
+        style.configure("TNotebook", background=color_background, borderwidth=2)
+        style.configure("TNotebook.Tab", 
+                        background=color_background,
+                        foreground=color_dark, 
+                        padding=[10, 5], 
+                        font=("Arial", 10, "bold"),
+                        focuscolor=color_primary)
+        
+        # Configura el estilo cuando una pestaña está seleccionada
+        style.map("TNotebook.Tab", 
+                background=[("selected", color_primary)], 
+                foreground=[("selected", color_darker)])
+
+        # Ajusta el padding de las pestañas y el borde de las pestañas seleccionadas
+        style.configure("TNotebook.Tab", padding=[10, 5])
 
         # Treeview
         style.configure("Treeview",
@@ -101,14 +125,14 @@ class App(tk.Tk):
         # Botones CRUD
         style.configure("listado.TButton",
                         background=color_primary,
-                        foreground="white",
+                        foreground=color_dark,
                         borderwidth=0,
                         focusthickness=3,
                         focuscolor=color_primary,
                         font=font_bold)
 
-        style.map("listado.TButton", background=[('active', color_secondary)])
-        style.map("listado.TButton", focuscolor=[('active', color_secondary)])
+        style.map("listado.TButton", background=[('active', color_secondary),("disabled",color_darker)])
+        style.map("listado.TButton", focuscolor=[('active', color_secondary),("disabled",color_darker)])
         style.map("listado.TButton", foreground=[('disabled', color_dark)])
 
         # Entry (campo de texto)
@@ -211,6 +235,67 @@ class App(tk.Tk):
         #boton_ajustes.config(command=self.Datos)
         boton_ajustes.pack(side="bottom",pady=8)
         
+    # Funcion que crea dataframes
+    def dataframes(self,root, tam, datos):
+            # Obtiene las llaves de los diccionarios de datos
+            columns = list(datos[0].keys())
+            
+            # Define frame del treeview y scrollbar
+            frame = ttk.Frame(root)
+            frame.pack(fill="x")
+            # Define el Treeview con las columnas correspondientes
+            listado = ttk.Treeview(frame, columns=columns, show="headings", height=tam)
+
+            # Función que ordena el Treeview por columna
+            def sort_by_column(column_name, reverse=False):
+                try:
+                    column_index = listado["columns"].index(column_name)
+                    sorted_items = sorted(
+                        ((listado.item(item)["values"][column_index], item) for item in listado.get_children()),
+                        key=lambda x: (x[0] is None, x[0]),  # Manejar valores None en el ordenamiento
+                        reverse=reverse
+                    )
+                    for index, (_, item) in enumerate(sorted_items):
+                        listado.move(item, '', index)
+
+                    listado.heading(column_name, command=functools.partial(sort_by_column, column_name, not reverse))
+                except Exception as e:
+                    print(f"Error al ordenar columna: {e}")
+
+            # Crear las columnas y los encabezados
+            for column in columns:
+                listado.column(column, anchor="center", width=len(column) + 100)  # Ajustar el ancho de forma más flexible
+                listado.heading(column, text=column, command=lambda col=column: sort_by_column(col))
+
+            # Insertar los datos en el Treeview
+            for animal in datos:
+                try:
+                    # Usa las claves del diccionario de forma dinámica
+                    listado.insert("", tk.END, values=[animal[col] for col in columns])
+                except KeyError as e:
+                    print(f"Error en los datos: columna no encontrada {e}")
+                except Exception as e:
+                    print(f"Error al insertar datos: {e}")
+
+            # Función para habilitar botones cuando se selecciona un ítem
+            def habilitar_botones(_):
+                try:
+                    self.upd_btn.config(state="normal")
+                    self.del_btn.config(state="normal")
+                except NameError:
+                    print("Botones 'upd_btn' o 'del_btn' no definidos.")
+
+            listado.bind("<<TreeviewSelect>>", habilitar_botones)
+
+            # Scrollbar vertical
+            verscrlbar = ttk.Scrollbar(frame, orient="vertical", command=listado.yview)
+            verscrlbar.pack(side='right', fill='y', padx=(0, 10))
+            listado.configure(yscrollcommand=verscrlbar.set)
+
+            listado.pack(expand=True, fill='both')
+
+            return listado
+        
     def Entry(self):
         """
         Ventana para ingreso y registro de cada animal
@@ -277,15 +362,14 @@ class App(tk.Tk):
         opc_raza.extend(sorted(list(manejo_datos(ganado).razas)))
         opc_raza.append("Otro")
 
-        def fill_dia(var):
-            if var.get() == "":
-                var.set("DD")
-        def fill_mes(var):
-            if var.get() == "":
-                var.set("MM")
-        def fill_anio(var):
-            if var.get() == "":
-                var.set("AAAA")
+        def fill_date(dia,mes,anio):
+            if dia.get() == "":
+                dia.set("DD")
+            if mes.get() == "":
+                mes.set("MM")
+            if anio.get() == "":
+                anio.set("AAAA")
+        fill_date(dia,mes,anio)
         
         # Menús y entrys para las variables 
         
@@ -296,9 +380,9 @@ class App(tk.Tk):
         
         # Nacimiento
         # Enlazamos la funcion de llenado default para cada variable 
-        dia.trace_add("write",lambda *args : fill_dia(dia))
-        mes.trace_add("write",lambda *args : fill_mes(mes))
-        anio.trace_add("write",lambda *args : fill_anio(anio))
+        dia.trace_add("write",lambda *args : fill_date(dia,mes,anio))
+        mes.trace_add("write",lambda *args : fill_date(dia,mes,anio))
+        anio.trace_add("write",lambda *args : fill_date(dia,mes,anio))
         
         nacimientoEntry = ttk.Frame(registro)
         nacimientoEntry.grid(row=2,column=2,columnspan=2,sticky="w")
@@ -320,21 +404,29 @@ class App(tk.Tk):
         marca.trace_add("write", lambda *args: verificar_opcion(marca, marca_otro_entry,otra_marca))
         raza.trace_add("write", lambda *args: verificar_opcion(raza, raza_otro_entry,otra_raza))
         
-        # 
-        dia.trace_add("write",lambda *args : fill_dia(dia))
-        mes.trace_add("write",lambda *args : fill_mes(mes))
-        anio.trace_add("write",lambda *args : fill_anio(anio))
-            
-            
-            
-    def Datos(self,*args):
-        if self.actualW =="Datos":
-            return
-        # Preparando el frame principal
-        self.frame_principal.destroy()
-        self.frame_principal = ttk.Frame(self)
-        self.frame_principal.pack(fill="both",side="right",expand=True,padx=(0,10))
-        self.actualW="Datos"
+         
+    def tab_general(self,notebook):
+        tabGeneral = ttk.Frame(notebook)
+        # Frame listado 
+        listado_frame = ttk.Frame(tabGeneral)
+        listado_frame.pack(side="top",fill="x")
+        # Se muestra el listado 
+        listado = self.dataframes(tabGeneral,35,self.datos.values_filtrados)
+        listado.pack(fill="both",padx=8,pady=8)
+        
+        # BOTONES CRUD
+        # Frame de los botones
+        btn_frame = ttk.Frame(tabGeneral)
+        btn_frame.pack(side="right",fill="y",padx=20)
+        # Botones de Agregar,Actualizar y Eliminar
+        add_btn = ttk.Button(btn_frame,text="Agregar",style="listado.TButton",width=20,command=self.Entry)
+        self.upd_btn = ttk.Button(btn_frame,text="Actualizar",state="disabled",style="listado.TButton",width=20)
+        self.del_btn = ttk.Button(btn_frame,text="Eliminar",state="disabled",style="listado.TButton",width=20)
+        export_btn = ttk.Button(btn_frame,text="Exportar",style="listado.TButton",width=20)
+        add_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
+        self.upd_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
+        self.del_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
+        export_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
         
         # -Variables
         def default_vars():
@@ -355,104 +447,19 @@ class App(tk.Tk):
                         ]
             self.filtros = [var.get() for var in self.vars]
         default_vars()  
-        
-    
-        # LISTADO-datos
-        def dataframes(frame, tam, datos):
-
-            # Obtiene las llaves de los diccionarios de datos
-            columns = list(datos[0].keys())
-            
-            # Define el Treeview con las columnas correspondientes
-            listado = ttk.Treeview(frame, columns=columns, show="headings", height=tam)
-
-            # Función que ordena el Treeview por columna
-            def sort_by_column(column_name, reverse=False):
-                try:
-                    column_index = listado["columns"].index(column_name)
-                    sorted_items = sorted(
-                        ((listado.item(item)["values"][column_index], item) for item in listado.get_children()),
-                        key=lambda x: (x[0] is None, x[0]),  # Manejar valores None en el ordenamiento
-                        reverse=reverse
-                    )
-                    for index, (_, item) in enumerate(sorted_items):
-                        listado.move(item, '', index)
-
-                    listado.heading(column_name, command=functools.partial(sort_by_column, column_name, not reverse))
-                except Exception as e:
-                    print(f"Error al ordenar columna: {e}")
-
-            # Crear las columnas y los encabezados
-            for column in columns:
-                listado.column(column, anchor="center", width=len(column) + 100)  # Ajustar el ancho de forma más flexible
-                listado.heading(column, text=column, command=lambda col=column: sort_by_column(col))
-
-            # Insertar los datos en el Treeview
-            for animal in datos:
-                try:
-                    # Usa las claves del diccionario de forma dinámica
-                    listado.insert("", tk.END, values=[animal[col] for col in columns])
-                except KeyError as e:
-                    print(f"Error en los datos: columna no encontrada {e}")
-                except Exception as e:
-                    print(f"Error al insertar datos: {e}")
-
-            # Función para habilitar botones cuando se selecciona un ítem
-            def habilitar_botones(_):
-                try:
-                    upd_btn.config(state="normal")
-                    del_btn.config(state="normal")
-                except NameError:
-                    print("Botones 'upd_btn' o 'del_btn' no definidos.")
-
-            listado.bind("<<TreeviewSelect>>", habilitar_botones)
-
-            # Scrollbar vertical
-            verscrlbar = ttk.Scrollbar(frame, orient="vertical", command=listado.yview)
-            verscrlbar.pack(side='right', fill='y', padx=(0, 10))
-            listado.configure(yscrollcommand=verscrlbar.set)
-
-            listado.pack(expand=True, fill='both')
-
-            return listado
-        
-        # Frame listado y filtrado
-        listado_frame = ttk.Frame(self.frame_principal)
-        listado_frame.pack(side="top",fill="x")
-        filtrado_frame = ttk.Frame(self.frame_principal)
-        filtrado_frame.pack(side="bottom",fill="x")
-        # Se muestra el listado y el filtrado
-        listado = dataframes(listado_frame,20,self.datos.values)
-        listado.pack(fill="both",padx=8,pady=8)
-        filtrado = dataframes(filtrado_frame,15,self.datos.values_filtrados)
-        filtrado.pack(fill="both",padx=8,pady=8)
-        
-        # BOTONES CRUD
-        # Frame de los botones
-        btn_frame = ttk.Frame(self.frame_principal)
-        btn_frame.pack(side="right",fill="y",padx=20)
-        # Botones de Agregar,Actualizar y Eliminar
-        add_btn = ttk.Button(btn_frame,text="Agregar",style="listado.TButton",width=20,command=self.Entry)
-        upd_btn = ttk.Button(btn_frame,text="Actualizar",state="disabled",style="listado.TButton",width=20)
-        del_btn = ttk.Button(btn_frame,text="Eliminar",state="disabled",style="listado.TButton",width=20)
-        add_btn.pack(side="right",anchor="n",padx=2,pady=2)
-        upd_btn.pack(side="right",anchor="n",padx=2,pady=2)
-        del_btn.pack(side="right",anchor="n",padx=2,pady=2)
-        
         # FILTROS
         # Construccion
-        filtros_frame = ttk.Frame(self.frame_principal)
-        filtros_frame.pack(side="top",fill="both",padx=(8,0),pady=8,ipadx=4,ipady=4)
-        ttk.Label(filtros_frame,text="FILTROS",anchor="e").grid(row=0,column=0,padx=10,columnspan=2)
-        
+        filtros_frame = tk.LabelFrame(tabGeneral,text="FILTROS",background="#46665F", foreground="white",font=("Helvetica", 10, "bold"))
+        filtros_frame.pack(side="right",fill="y",padx=(8,0),pady=8,ipadx=4,ipady=4)
+    
         # Crea un filtro a partir de ciertos parametros
         def crear_filtro(frame, row, col, texto, variable, opciones):
             ttk.Label(frame, text=f"{texto} : ", anchor="e", width=20).grid(row=row, column=col, padx=10, pady=2)
             ttk.OptionMenu(frame, variable, opciones[0], *opciones).grid(row=row, column=col+1, padx=2, sticky="w")
         # Funcion: actualizar la lista de filtros
         def act_filtros(*args):
-            for item in filtrado.get_children():
-                filtrado.delete(item)
+            for item in listado.get_children():
+                listado.delete(item)
             self.filtros = [var.get() for var in self.vars]
             # Datos a filtrar
             datos_filtrados = self.datos.filtros(self.filtros)
@@ -463,7 +470,7 @@ class App(tk.Tk):
             for animal in datos_filtrados:
                 try:
                     # Usa las claves del diccionario de forma dinámica
-                    filtrado.insert("", tk.END, values=[animal[col] for col in columns])
+                    listado.insert("", tk.END, values=[animal[col] for col in columns])
                 except KeyError as e:
                     print(f"Error en los datos: columna no encontrada {e}")
                 except Exception as e:
@@ -507,12 +514,11 @@ class App(tk.Tk):
         opciones_corporal.extend(sorted(list(manejo_datos(ganado).condicion)))
         crear_filtro(filtros_frame,3,7,"Estado Corporal",self.condicion_corporal,opciones_corporal)
         # Gestacion
-        """opciones_corporal = ["-Seleccionar-"," Adecuado "," Bajo peso "," Sobrepeso "]
-        ttk.OptionMenu(filtros_frame,self.condicion_corporal,opciones_corporal[0],*opciones_corporal).grid(row=3,column=8,padx=2,sticky="w")"""
+        
         # Corral
         opciones_corral = ["-Seleccionar-"]
         opciones_corral.extend(sorted(list(manejo_datos(ganado).corrales)))
-        crear_filtro(filtros_frame,5,7,"Corral",self.corral,opciones_corral)
+        crear_filtro(filtros_frame,4,7,"Corral",self.corral,opciones_corral)
         # Boton Clean filters
         def cleanf():
             for var in self.vars:
@@ -526,6 +532,39 @@ class App(tk.Tk):
         act_filtros()
         # INGRESO-SELECCION
         # Frame Observaciones
+        
+        return tabGeneral
+               
+    def tab_machos(self,notebook):
+        tabMachos = ttk.Frame(notebook)
+        return tabMachos
+    
+    def tab_hembras(self,notebook):
+        tabHembras = ttk.Frame(notebook)
+        return tabHembras
+        
+    def Datos(self,*args):
+        if self.actualW =="Datos":
+            return
+        # Preparando el frame principal
+        self.frame_principal.destroy()
+        self.frame_principal = ttk.Frame(self)
+        self.frame_principal.pack(fill="both",side="right",expand=True,padx=(0,10))
+        self.actualW="Datos"
+        
+        # Creamos el notebook
+        notebook = ttk.Notebook(self.frame_principal)
+        
+        #  TAB - GENERAL
+        tabGeneral = self.tab_general(notebook)
+        tabMachos = self.tab_machos(notebook)
+        tabHembras = self.tab_hembras(notebook)
+        
+        # Añadimos los tabs al notebook
+        notebook.add(tabGeneral,text="General")
+        notebook.add(tabMachos,text="Machos")
+        notebook.add(tabHembras,text="Hembras")
+        notebook.pack(expand=True, fill="both")
     
     def Principal(self):
         if self.actualW =="Principal":
