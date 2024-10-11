@@ -8,8 +8,8 @@ import tksheet
 Ultimos cambios:
 - Reorganizacion de panel de datos en forma
   de notebook.
-Continuar con:
 - Ingreso de animales
+Continuar con:
 - Tab Machos
 - Tab Hembras
 - Boton Exportar
@@ -235,9 +235,9 @@ class App(tk.Tk):
         boton_ajustes= crear_boton(self.config_imagen,"  Configurar")
         #boton_ajustes.config(command=self.Datos)
         boton_ajustes.pack(side="bottom",pady=8)
-        
+    
     # Funcion que crea dataframes
-    def dataframes(self,root, tam, datos,btn):
+    def dataframes(self,root, tam, datos,act,delete):
             # Obtiene las llaves de los diccionarios de datos
             columns = list(datos[0].keys())
             
@@ -279,14 +279,18 @@ class App(tk.Tk):
                     print(f"Error al insertar datos: {e}")
 
             # Función para habilitar botones cuando se selecciona un ítem
-            def habilitar_botones(_):
+            def habilitar_botones(btn1,btn2):
                 try:
-                    self.upd_btn.config(state="normal")
-                    self.del_btn.config(state="normal")
+                    if btn1 != None:
+                        btn1.config(state="normal")
+                    if btn2 != None:
+                        btn2.config(state="normal")
                 except NameError:
                     print("Botones 'upd_btn' o 'del_btn' no definidos.")
-            if btn:
-                listado.bind("<<TreeviewSelect>>", habilitar_botones)
+            
+            if act != None or delete !=None:        
+                listado.bind("<<TreeviewSelect>>", lambda *args :habilitar_botones(act,delete))
+            
 
             # Scrollbar vertical
             verscrlbar = ttk.Scrollbar(frame, orient="vertical", command=listado.yview)
@@ -466,36 +470,40 @@ class App(tk.Tk):
         finca.trace_add("write", lambda *args: verificar_opcion(finca, finca_otro_entry,otra_finca))
         
         # Botones de ingresar y exportar
-        ttk.Button(registro,text="Ingresar").grid(row=3,column=9,padx= (50,0))
-        ttk.Button(registro,text="Exportar").grid(row=5,column=9,padx= (50,0))
+        ttk.Button(registro,text="Ingresar").grid(row=4,column=9,padx= 20)
+        ttk.Button(registro,text="Exportar").grid(row=5,column=9,padx= 20)
+        act = ttk.Button(registro,text="Actualizar",state="disabled",style="listado.TButton")
+        act.grid(row=4,column=10,padx= 20)
+        delete= ttk.Button(registro,text="Eliminar",state="disabled",style="listado.TButton")
+        delete.grid(row=5,column=10,padx= 20)
         
         # TABLA DE DATOS INGRESADOS
         lista_filtros= ["" ,"-Seleccionar-", "7", "-Seleccionar-", "-Seleccionar-","-Seleccionar-", "-Seleccionar-", "-Seleccionar-","-Seleccionar-"]
         ingresados = self.datos.filtros(lista_filtros)
-        tabla = self.dataframes(ingresos,10,ingresados,False)
+        tabla = self.dataframes(ingresos,10,ingresados,act,delete)
         tabla.pack(fill="both")
         
     def tab_general(self,notebook):
+        # Frame Tab-General
         tabGeneral = ttk.Frame(notebook)
-        # Frame listado 
-        listado_frame = ttk.Frame(tabGeneral)
-        listado_frame.pack(side="top",fill="x")
+        
+        # Definir botones de actualizar y eliminar registros
+        btn_frame = ttk.Frame(tabGeneral)
+        upd_btn = ttk.Button(btn_frame,text="Actualizar",state="disabled",style="listado.TButton",width=20)
+        del_btn = ttk.Button(btn_frame,text="Eliminar",state="disabled",style="listado.TButton",width=20)
         # Se muestra el listado 
-        listado = self.dataframes(tabGeneral,35,self.datos.values_filtrados,True)
+        listado = self.dataframes(tabGeneral,35,self.datos.values_filtrados,upd_btn,del_btn)
         listado.pack(fill="both",padx=8,pady=8)
         
         # BOTONES CRUD
         # Frame de los botones
-        btn_frame = ttk.Frame(tabGeneral)
         btn_frame.pack(side="right",fill="y",padx=20)
         # Botones de Agregar,Actualizar y Eliminar
         add_btn = ttk.Button(btn_frame,text="Agregar",style="listado.TButton",width=20,command=self.Entry)
-        self.upd_btn = ttk.Button(btn_frame,text="Actualizar",state="disabled",style="listado.TButton",width=20)
-        self.del_btn = ttk.Button(btn_frame,text="Eliminar",state="disabled",style="listado.TButton",width=20)
         export_btn = ttk.Button(btn_frame,text="Exportar",style="listado.TButton",width=20)
         add_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
-        self.upd_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
-        self.del_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
+        upd_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
+        del_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
         export_btn.pack(side="right",anchor="n",padx=2,pady=(2,8))
         
         # -Variables
@@ -606,7 +614,31 @@ class App(tk.Tk):
         return tabGeneral
                
     def tab_machos(self,notebook):
+        # Frame Tab-Machos
         tabMachos = ttk.Frame(notebook)
+        
+        # Frame Dataframe
+        frame_data = ttk.Frame(tabMachos)
+        frame_data.pack(side="top",fill="x",padx=4,pady=4)
+        
+        # Filtrar por machos
+        filtros = ["" ,"-Seleccionar-", "-Seleccionar-", "-Seleccionar-", "-Seleccionar-","Macho", "-Seleccionar-", "-Seleccionar-","-Seleccionar-"]
+        datos = self.datos.filtros(filtros)
+        data = self.dataframes(frame_data,20,datos,None,None)
+        
+        # Mostrar solo ciertas columnas
+        data["displaycolumns"]=("id","Marca","Edad","Nacimiento","Peso","Raza","Estado_Salud","Condicion_Corporal","Corral")
+        
+        # Imagen Toro
+        # -- al seleccionar un animal debera mostrar la foto de dicho animal, en caso de no tener mostrara una default--
+        foto_frame = tk.LabelFrame(tabMachos, background="#283331") # Frame 
+        foto_frame.pack(side="left",fill="y",padx=4,pady=(4,8))
+        
+        self.img = tk.PhotoImage(file=r"Proyecto_ganado\imagenes\toro.png")
+        label = tk.Label(foto_frame,image=self.img,background="#283331")
+        label.pack()
+        
+        
         return tabMachos
     
     def tab_hembras(self,notebook):
