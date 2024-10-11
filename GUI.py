@@ -3,7 +3,6 @@ from tkinter import ttk
 from ejemplos import ganado
 import functools
 from datos import manejo_datos
-import tksheet
 """
 Ultimos cambios:
 - Reorganizacion de panel de datos en forma
